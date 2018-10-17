@@ -58,9 +58,6 @@ $(DIROBJ):
 	@mkdir -p $(DIRBIN)
 	@echo "$(CYANN)Project tree created$(NON)"
 
-show:
-	@echo $(COLOR)
-
 clean:
 	@rm -rf $(DIRCLI)
 	@rm -rf $(DIRDMN)

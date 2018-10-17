@@ -4,7 +4,8 @@ const char *help_command[] = {
 	"start - packets sniffed from now on from default iface (eth0).\n",
 	"stop - stop sniff packets from recent interface.\n",
 	"show [ip] - print numbers of packets recieved from ip address.\n",
-	"select iface [iface] - select interface for sniffing (ethN, wlanN, ...).\n",
+	"select iface [iface] - select interface for sniffing (ethN, wlanN, ...),\
+\n	if interface ommitted - list available interfaces names",
 	"stat [iface] - show all collected statistics for particular interface,\
 \n 	if interface ommitted - for all interfaces.\n",
 	"--help [command name] - show usage or specific command info.\n",
@@ -37,8 +38,8 @@ available commands: start stop show select stat --help\ntype: \"netstat_cli \
 }
 
 const t_funptr g_commands[] = {
-	{"start", start_daemon},
-	{"stop", stop_daemon},
+	{"start", start_sniff},
+	{"stop", stop_sniff},
 	{"show", show_ip},
 	{"select", select_iface},
 	{"stat", stat_iface},
