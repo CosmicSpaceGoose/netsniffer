@@ -1,6 +1,6 @@
 #include "netsniffer_cli.h"
 
-int		iface_checker(char *name)
+int		iface_checker(char *name, int mod)
 {
 	struct ifaddrs	*list;
 
@@ -11,19 +11,19 @@ int		iface_checker(char *name)
 	}
 	while (list)
 	{
-		printf("%s\n", list->ifa_name);
-		if (list->ifa_addr->sa_data[0] && !strcmp(name, list->ifa_name))
+		if (!mod)// && list->ifa_addr->sa_data[0])
+			printf("%d %s\n", list->ifa_addr->sa_data[0], list->ifa_name);
+		if (mod && list->ifa_addr->sa_data[0] && !strcmp(name, list->ifa_name))
 			return (0);
 		list = list->ifa_next;
 	}
-	dprintf(2, "%s%s\n", "netsniffer: No such interface name: ", name);
+	if (mod)
+		dprintf(2, "%s%s\n", "netsniffer: No such interface: ", name);
 	return (1);
 }
 
 void start_sniff(char *argv[])
 {
-	if (*argv && iface_checker(*argv))
-		exit(1);
 	// if (!launched())
 	// 	launch_daemon(*argv);
 	argv++;
@@ -43,8 +43,12 @@ void show_ip(char *argv[])
 
 void select_iface(char *argv[])
 {
-	argv++;
-	/* code */
+	if (!*argv)
+		iface_checker(NULL, 0);
+	else if (iface_checker(*argv, 1))
+		exit(1);
+	else
+		;// switch iface
 }
 
 void stat_iface(char *argv[])

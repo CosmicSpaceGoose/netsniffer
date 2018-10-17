@@ -1,13 +1,13 @@
 #include "netsniffer_cli.h"
 
 const char *help_command[] = {
-	"start - packets sniffed from now on from default iface (eth0).\n",
+	"start - packets sniffed from now on from default interface (eth0).\n",
 	"stop - stop sniff packets from recent interface.\n",
-	"show [ip] - print numbers of packets recieved from ip address.\n",
-	"select iface [iface] - select interface for sniffing (ethN, wlanN, ...),\
-\n	if interface ommitted - list available interfaces names",
+	"show [ip] - print numbers of packets received from ip address.\n",
+	"select [iface] - select interface for sniffing (ethN, wlanN, ...),\
+\n	if interface omitted - list available interfaces names",
 	"stat [iface] - show all collected statistics for particular interface,\
-\n 	if interface ommitted - for all interfaces.\n",
+\n 	if interface omitted - for all interfaces.\n",
 	"--help [command name] - show usage or specific command info.\n",
 	NULL
 };
