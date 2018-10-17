@@ -1,16 +1,16 @@
 # netsniffer
-# Presented service collects statistic about network traffic
+## Presented service collects statistic about network traffic
 
-# Components:
+## Components:
 	netsniffer_d - daemon<br>
 	netsniffer_cli - command line interface (CLI) for daemon
 
-# Daemon can be started independently or through the CLI.
+	Daemon can be started independently or through the CLI.
 
-# CLI usage:<br>
+## CLI usage:<br>
 	netsniffercli [command_name [argument1 ...]]
 
-# CLI commands:<br>
+## CLI commands:<br>
 	start - packets sniffed from now on from default iface (eth0);<br>
 	stop - packets are not sniffed;<br>
 	show [ip] count - print numbers of packets recieved from ip address;<br>
