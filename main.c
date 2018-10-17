@@ -59,3 +59,14 @@
     close(SocketFD);
     return EXIT_SUCCESS;
 }
+struct ifaddrs	*list;
+
+if (getifaddrs(&list))
+	return (1);
+while (list)
+{
+	if (list->ifa_addr->sa_data[0])
+		printf("%s\n", list->ifa_name);
+	list = list->ifa_next;
+}
+return (0);

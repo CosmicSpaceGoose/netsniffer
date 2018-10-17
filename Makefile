@@ -1,36 +1,71 @@
+################################ output variables ##############################
+ifeq ($(findstring xterm,${TERM}),xterm)
+	CYAN	:= \x1b[1;36m
+	NON		:= \x1b[0m
+	CYANN	:= \x1b[36m
+	GREEN	:= \x1b[32m
+endif
+################################ compiler variables ############################
+# General
 CC		:= gcc
-CFLAGS	:= -Wall -Wextra -Werror
-
-DIROBJ	:= ./obj
-DIRBIN	:= ./obj/bin
-DIRSRC	:= ./src
-DIRINC	:= ./inc
-
+CFLAGS	:= -Wall -Wextra -Werror -O2
+DIROBJ	:= ./obj/
+DIRBIN	:= ./obj/bin/
+DIRSRC	:= ./src/
+DIRINC	:= ./inc/
+INC		:= -I$(DIRINC)
 # Command Line Interface
-BINCLI	:= netstatcli
-DIRCLI	:= ./obj/cli
-SRCCLI	:= main_cli.c
+BINCLI	:= netsniffercli
+DIRCLI	:= ./obj/cli/
+SRCCLI	:=	main_cli.c\
+			cli_commands.c
 OBJCLI	:= $(addprefix $(DIRCLI), $(SRCCLI:.c=.o))
+INCCLI	:= inc/netsniffer_cli.h
 # Daemon
-BINDMN	:= netstatd
-DIRDMN	:= ./obj/dmn
+BINDMN	:= netsnifferd
+DIRDMN	:= ./obj/dmn/
 SRCDMN	:= main_d.c
 OBJDMN	:= $(addprefix $(DIRDMN), $(SRCDMN:.c=.o))
+INCDMN	:= inc/netsniffer_d.h
+################################## rules #######################################
 
 all: $(DIROBJ) $(BINCLI) $(BINDMN)
+	@echo "$(GREEN)Job done$(NON)"
 
-$(BINCLI): $(OBJCLI) $(INCCLI)
-	mkdir -p $(DIRCLI)
+# Command Line Interface
+$(BINCLI): $(DIROBJ) $(OBJCLI)
+	@$(CC) $(CFLAGS) $(OBJCLI) -o $(DIRBIN)$(BINCLI)
+	@echo "$(CYAN)comp$(NON)..."$(BINCLI)
 
-$(BINDMN):
-	mkdir -p $(DIRDMN)
+$(DIRCLI)%.o : $(DIRSRC)%.c $(INCCLI)
+	@$(CC) $(INC) $(CFLAGS) -o $@ -c $<
+	@echo "$(CYANN)comp$(NON)..."$@
 
-$(DIR_OBJ):
-	mkdir -p $(DIROBJ)
+# Daemon
+$(BINDMN): $(DIROBJ) $(OBJDMN)
+	@$(CC) $(CFLAGS) $(OBJDMN) -o $(DIRBIN)$(BINDMN)
+	@echo "$(CYAN)comp$(NON)..."$(BINDMN)
+
+$(DIRDMN)%.o : $(DIRSRC)%.c $(INCDMN)
+	@$(CC) $(INC) $(CFLAGS) -o $@ -c $<
+	@echo "$(CYANN)comp$(NON)..."$@
+
+# General
+$(DIROBJ):
+	@mkdir -p $(DIROBJ)
+	@mkdir -p $(DIRCLI)
+	@mkdir -p $(DIRDMN)
+	@mkdir -p $(DIRBIN)
+	@echo "$(CYANN)Project tree created$(NON)"
+
+show:
+	@echo $(COLOR)
 
 clean:
-	rm -rf $(DIRCLI)
-	rm -rf $(DIRDMN)
+	@rm -rf $(DIRCLI)
+	@rm -rf $(DIRDMN)
+	@echo "$(CYANN)Remove object files$(NON)"
 
 fclean: clean
-	rm -rf $(DIROBJ)
+	@rm -rf $(DIROBJ)
+	@echo "$(CYANN)Remove binary files$(NON)"

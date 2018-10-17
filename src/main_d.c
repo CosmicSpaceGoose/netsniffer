@@ -1,16 +1,14 @@
-#include <netinet/ip.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#include "netsniffer_d.h"
 
-int main(int argc, char *argv[])
+int		main(void)
 {
 	int sck;
 
 	if (argc > 1)
-		write(1, argv[1], 3);
+		daemon_starter("");
 	else
 	{
-		sck = socket(AF_INET, SOCK_RAW, )
+		daemon_starter();
 	}
 	return (0);
 }
