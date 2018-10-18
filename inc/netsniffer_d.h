@@ -5,12 +5,14 @@
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <unistd.h>
-# include <printf.h>
 # include <stdlib.h>
 # include <syslog.h>
 # include <errno.h>
 # include <string.h>
 # include <fcntl.h>
 # include <signal.h>
+# include <stdio.h>
+
+int		logfd, confd;
 
 #endif
