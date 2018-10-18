@@ -1,59 +1,48 @@
+#include <stdio.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <net/if.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
+#include <sys/ioctl.h>
 
 int main(void)
 {
-	struct sockaddr_in sa;
-	int SocketFD = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (SocketFD == -1)
-	{
-		perror("cannot create socket");
-		exit(EXIT_FAILURE);
-	}
-	memset(&sa, 0, sizeof(sa));
-	sa.sin_family = AF_INET;
-	sa.sin_port = htons(1100);
-	sa.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(SocketFD,(struct sockaddr *)&sa, sizeof sa) == -1)
-	{
-		perror("bind failed");
-		close(SocketFD);
-		exit(EXIT_FAILURE);
-	}
-	if (listen(SocketFD, 10) == -1)
-	{
-		perror("listen failed");
-		close(SocketFD);
-		exit(EXIT_FAILURE);
-	}
-	for (;;)
-	{
-		int ConnectFD = accept(SocketFD, NULL, NULL);
+   int    iSocket = -1;
+   struct if_nameindex* pIndex = 0;
+   struct if_nameindex* pIndex2 = 0;
 
-		if (0 > ConnectFD)
-		{
-			perror("accept failed");
-			close(SocketFD);
-			exit(EXIT_FAILURE);
-		}
-	/* perform read write operations ...
-	read(ConnectFD, buff, size)
-	*/
-		if (shutdown(ConnectFD, SHUT_RDWR) == -1)
-		{
-			perror("shutdown failed");
-			close(ConnectFD);
-			close(SocketFD);
-			exit(EXIT_FAILURE);
-		}
-		close(ConnectFD);
-	}
-	close(SocketFD);
-	return EXIT_SUCCESS;
+   if ((iSocket = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
+   {
+      perror("socket");
+      return -1;
+   }
+   pIndex = pIndex2 = if_nameindex();
+   while ((pIndex != NULL) && (pIndex->if_name != NULL))
+   {
+      struct ifreq req;
+      printf("%d: %s\t", pIndex->if_index, pIndex->if_name);
+      strncpy(req.ifr_name, pIndex->if_name, IFNAMSIZ);
+	  req.ifr_flags = 0;
+      if (ioctl(iSocket, SIOCGIFADDR, &req) < 0)
+      {
+         if (errno == EADDRNOTAVAIL)
+         {
+            printf("\tN/A\n");
+            ++pIndex;
+            continue;
+         }
+         perror("ioctl");
+         close(iSocket);
+         return -1;
+      }
+      printf("\t %u\n", ((struct sockaddr_in*)&req.ifr_addr)->sin_addr.s_addr);
+      ++pIndex;
+   }
+   if_freenameindex(pIndex2);
+   close(iSocket);
+   return 0;
 }

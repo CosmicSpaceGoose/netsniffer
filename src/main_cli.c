@@ -43,6 +43,7 @@ const t_funptr g_commands[] = {
 	{"show", show_ip},
 	{"select", select_iface},
 	{"stat", stat_iface},
+	{"restart", restart_sniffer},
 	{"--help", usage},
 	{NULL, NULL}
 };

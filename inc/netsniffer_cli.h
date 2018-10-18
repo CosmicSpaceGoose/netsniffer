@@ -8,6 +8,7 @@
 # include <netinet/in.h>
 # include <string.h>
 # include <stdlib.h>
+# include <unistd.h>
 
 typedef struct	s_funptr {
 	char	*name;
@@ -21,5 +22,6 @@ void	stop_sniff(char *argv[]);
 void	show_ip(char *argv[]);
 void	select_iface(char *argv[]);
 void	stat_iface(char *argv[]);
+void	restart_sniffer(char *argv[]);
 
 #endif
