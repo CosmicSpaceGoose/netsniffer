@@ -7,50 +7,34 @@ static void	err_msg(const char *msg) {
 
 static void	signal_handler(int signo)
 {
+	int status;
+
 	if (signo == SIGTERM)
 	{
+		kill(0, SIGUSR1);
 		close(confd);
 		unlink("/tmp/netsnifferd.conf");
+		dprintf(logfd, "Shutting down\n");
 		exit(0);
 	}
-}
-
-static void	starter(void)
-{
-	sigset_t			set;
-	struct sigaction	act;
-
-	switch (fork())
+	else if (signo == SIGCHLD)
 	{
-		case 0:
-			break ;
-		case -1:
-			err_msg("Failed to fork process: %s");
-			exit(1);
-		default:
-			exit(0);
+		wait(&status);
+		if (WIFEXITED(status))
+			dprintf(logfd, "Child process exited: %d\n",
+				WEXITSTATUS(status));
+		else if (WIFSIGNALED(status))
+		{
+			if (WTERMSIG(status))
+				dprintf(logfd, "Child process terminate with signal: %d\n",
+					WTERMSIG(status));
+			else if (WCOREDUMP(status))
+				dprintf(logfd, "Child process terminate with signal: %d\n",
+					WCOREDUMP(status));
+		}
+		else if (WIFSTOPPED(status))
+			dprintf(logfd, "Child process stopped: %d\n", WSTOPSIG(status));
 	}
-	if (setsid() < 0)
-		err_msg("Failed to set session id: %s");
-	umask(0);
-	chdir("/");
-	close(0);
-	close(1);
-	close(2);
-	if (open("/dev/null", O_RDWR) != 0)
-		err_msg("Unable to open /dev/null: %s");
-	dup(0);
-	dup(0);
-	sigemptyset(&set);
-	sigaddset(&set, SIGQUIT);
-	sigaddset(&set, SIGINT);
-	sigaddset(&set, SIGCHLD);
-	sigaddset(&set, SIGUSR1);
-	sigprocmask(SIG_BLOCK, &set, NULL);
-	act.sa_handler = signal_handler;
-	act.sa_mask = set;
-	if (sigaction(SIGTERM, &act, NULL) == -1)
-		err_msg("Can't set SIGTERM signal: ");
 }
 
 static void	detect_port(int sockfd)
@@ -92,7 +76,8 @@ static void	connector(void)
 	while (1) {
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 		if (newsockfd < 0)
-			dprintf(logfd, "Failed to accept connetction: %s", strerror(errno));
+			dprintf(logfd, "Failed to accept connetction: %s",
+				strerror(errno));
 		bzero(buffer,256);
 		n = read(newsockfd, buffer, 255);
 		if (n > 0)
@@ -100,7 +85,8 @@ static void	connector(void)
 			dprintf(logfd, "Here is the message: %s", buffer);
 			n = write(newsockfd,"I got your message",18);
 			if (n < 0)
-				dprintf(logfd, "Failed to write in socket: %s", strerror(errno));
+				dprintf(logfd, "Failed to write in socket: %s",
+					strerror(errno));
 		}
 		else if (n < 0)
 			dprintf(logfd, "Failed to read from socket: %s", strerror(errno));
@@ -111,6 +97,9 @@ static void	connector(void)
 
 int			main(void)
 {
+	sigset_t			set;
+	struct sigaction	act;
+
 	if ((logfd = open("/tmp/netsnifferd.log", O_WRONLY | O_APPEND | O_CREAT,
 		S_IRUSR | S_IWUSR)) == -1)///
 		exit(1);
@@ -123,7 +112,39 @@ int			main(void)
 	}
 	else if (confd == -1)
 		err_msg("Can't open .conf file: %s");
-	starter();
+	switch (fork())
+	{
+		case 0:
+			break ;
+		case -1:
+			err_msg("Failed to fork process: %s");
+			exit(1);
+		default:
+			exit(0);
+	}
+	if (setsid() < 0)
+		err_msg("Failed to set session id: %s");
+	umask(0);
+	chdir("/");
+	close(0);
+	close(1);
+	close(2);
+	if (open("/dev/null", O_RDWR) != 0)
+		err_msg("Unable to open /dev/null: %s");
+	dup(0);
+	dup(0);
+	sigemptyset(&set);
+	sigaddset(&set, SIGQUIT);
+	sigaddset(&set, SIGINT);
+	sigaddset(&set, SIGUSR1);
+	sigprocmask(SIG_BLOCK, &set, NULL);
+	act.sa_handler = signal_handler;
+	act.sa_mask = set;
+	// act.sa_flags = NO_CLDWAIT;
+	if (sigaction(SIGTERM, &act, NULL) == -1)
+		err_msg("Can't set SIGTERM signal: ");
+	if (sigaction(SIGCHLD, &act, NULL) == -1)
+		err_msg("Can't set SIGCHLD signal: ");
 	connector();
 	return (0);
 }
