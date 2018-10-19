@@ -1,13 +1,16 @@
 #ifndef NETSNIFFER_CLI_H
 # define NETSNIFFER_CLI_H
 
+# include <netinet/in.h>
 # include <sys/types.h>
 # include <sys/socket.h>
+# include <sys/wait.h>
+# include <fcntl.h>
 # include <ifaddrs.h>
+# include <netdb.h>
 # include <stdio.h>
-# include <netinet/in.h>
-# include <string.h>
 # include <stdlib.h>
+# include <string.h>
 # include <unistd.h>
 
 typedef struct	s_funptr {
@@ -23,5 +26,6 @@ void	show_ip(char *argv[]);
 void	select_iface(char *argv[]);
 void	stat_iface(char *argv[]);
 void	restart_sniffer(char *argv[]);
+void	shutdown_daemon(char *argv[]);
 
 #endif
