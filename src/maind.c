@@ -1,4 +1,4 @@
-#include "netsniffer_d.h"
+#include "nsniffd.h"
 
 static void	err_msg(const char *msg)
 {
@@ -16,7 +16,7 @@ static void	signal_handler(int signo)
 		kill(0, SIGQUIT);
 		wait(&status);
 		close(confd);
-		unlink("/tmp/netsnifferd.conf");
+		unlink(CONF_FILE);
 		dprintf(logfd, "[pid:%d:%lu] Shutting down\n", getpid(), time(0));
 		exit(0);
 	}
@@ -42,6 +42,7 @@ static void	signal_handler(int signo)
 	}
 	else if (signo == SIGQUIT && getppid() > 1)
 	{
+		bucket(NULL, SAVE);
 		iface_connection(NULL, 1);
 		exit(0);
 	}
@@ -102,6 +103,89 @@ int		iface_connection(const char *iface, int mod)
 	return (0);
 }
 
+void	bucket(char *data, int mod)
+{
+	static t_data	*dptr;
+	static size_t	last, total;
+	size_t			i, max, min;
+	int				fd;
+	t_data			entry;
+
+	if (mod == ADD)	/*	add entry at the end of array	*/
+	{
+		if (last == total)
+		{
+			dptr = (t_data *)realloc((void *)dptr, (total + 100) * sizeof(t_data));
+			total += 100;
+		}
+		memcpy((void *)dptr + last, (void *)data, sizeof(t_data));
+		last++;
+	}
+	else if (mod == INC)	/* increas number of packets received from ip */
+	{						/* or add new entry */
+		entry = *(t_data *)data;
+		min = 0;
+		max = last - 1;
+		while (min <= max)
+		{
+			i = (min + max) / 2;
+			if (entry.addr < dptr[i].addr)
+				min = i + 1;
+			else if (entry.addr == dptr[i].addr)
+			{
+				dptr[i].count++;
+				break ;
+			}
+			else
+				max = i - 1;
+		}
+		if (min > max)	/* if entry not present - insert new entry */
+		{
+			if (last == total)
+			{
+				dptr = (t_data *)realloc((void *)dptr, (total + 100)
+					* sizeof(t_data));
+				total += 100;
+			}
+			if (entry.addr < dptr[0].addr)
+			{
+				memmove((void *)(dptr + 1), (void *)dptr, sizeof(t_data));
+				memcpy((void *)dptr, (void *)data, sizeof(t_data));
+			}
+			else if (entry.addr > dptr[last - 1].addr)
+				memcpy((void *)dptr + last, (void *)data, sizeof(t_data));
+			last++;
+		}
+	}
+	else if (mod == SAVE)	/* save all data in file */
+	{
+		i = 0;
+		if ((fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU)) == -1)
+			err_msg("Can't open data file for writing");
+		while (i < last)
+		{
+			write(fd, (char *)(dptr + i), sizeof(t_data));
+			i++;
+		}
+		close(fd);
+		free(dptr);
+	}
+}
+
+static void	load_data(void)
+{
+	int		fd;
+	char	data[sizeof(t_data)];
+
+	if (access(DATA_FILE, F_OK) == -1)
+		return ;
+	if ((fd = open(DATA_FILE, O_RDONLY | O_CREAT | O_TRUNC, S_IRWXU)) == -1)
+		err_msg("Can't open data file for reading");
+	while (read(fd, data, sizeof(t_data)))
+		bucket(data, ADD);
+	close(fd);
+}
+
 static void launch_sniffer(void)
 {
 	pid_t			pid;
@@ -109,6 +193,8 @@ static void launch_sniffer(void)
 	int				saddr_size, data_size, sock_raw;
 	struct sockaddr	saddr;
 	char			buffer[65536];
+	struct ip		*iph;
+	t_data			entry;
 
 	if (child_run)
 		return ;
@@ -120,6 +206,7 @@ static void launch_sniffer(void)
 	{
 		dprintf(logfd, "[pid:%d:%lu] Sniffer startfed\n", getpid(), time(0));
 		sock_raw = iface_connection(iface, 0);
+		load_data();
 		while (1)
 		{
 			saddr_size = sizeof(saddr);
@@ -127,8 +214,12 @@ static void launch_sniffer(void)
 				(socklen_t*)&saddr_size);
 			if (data_size < 0)
 				err_msg("Failed to count packets");
-			struct ip *iph = (struct ip*)(buffer + sizeof(struct ip));
-			dprintf(logfd, "%s\n", inet_ntoa(iph->ip_src));
+			iph = (struct ip*)(buffer + sizeof(struct ip));
+			bzero((void *)&entry, sizeof(t_data));
+			entry.addr = (uint32_t)iph->ip_src.s_addr;
+			strcpy(entry.iface, iface);
+			bucket((char *)&entry, INC);
+			// dprintf(logfd, "%s\n", inet_ntoa(iph->ip_src));
 		}
 		exit (0);
 	}
@@ -214,11 +305,14 @@ int			main(void)
 {
 	sigset_t			set;
 	struct sigaction	act;
+	struct stat			dir;
 
-	if ((logfd = open("/tmp/netsnifferd.log", O_WRONLY | O_APPEND | O_CREAT,
+	if (stat(DATA_DIR, &dir) == -1 && mkdir(DATA_DIR, 0700))
+		perror("Can't find data directory");
+	if ((logfd = open(LOG_FILE, O_WRONLY | O_APPEND | O_CREAT,
 		S_IRUSR | S_IWUSR)) == -1)
 		exit(1);
-	if ((confd = open("/tmp/netsnifferd.conf", O_WRONLY | O_CREAT,
+	if ((confd = open(CONF_FILE, O_WRONLY | O_CREAT,
 		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)) > -1
 		&& lockf(confd, F_TEST, 0) == -1)
 	{
@@ -250,13 +344,11 @@ int			main(void)
 	dup(0);
 	dup(0);
 	sigemptyset(&set);
-	// sigaddset(&set, SIGQUIT);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGUSR1);
 	sigprocmask(SIG_BLOCK, &set, NULL);
 	act.sa_handler = signal_handler;
 	act.sa_mask = set;
-	// act.sa_flags = NO_CLDWAIT;
 	if (sigaction(SIGTERM, &act, NULL) == -1)
 		err_msg("Can't set SIGTERM signal");
 	if (sigaction(SIGCHLD, &act, NULL) == -1)

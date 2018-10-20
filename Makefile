@@ -8,18 +8,17 @@ DIRSRC	:= src/
 DIRINC	:= inc/
 INC		:= -I$(DIRINC)
 # Command Line Interface
-BINCLI	:= netsniffercli
+BINCLI	:= nsniffcli
 DIRCLI	:= obj/cli/
-SRCCLI	:=	main_cli.c\
-			cli_commands.c
+SRCCLI	:=	maincli.c
 OBJCLI	:= $(addprefix $(DIRCLI), $(SRCCLI:.c=.o))
-INCCLI	:= inc/netsniffer_cli.h
+INCCLI	:= inc/nsniffcli.h
 # Daemon
-BINDMN	:= netsnifferd
+BINDMN	:= nsniffd
 DIRDMN	:= obj/dmn/
-SRCDMN	:= main_d.c
+SRCDMN	:= maind.c
 OBJDMN	:= $(addprefix $(DIRDMN), $(SRCDMN:.c=.o))
-INCDMN	:= inc/netsniffer_d.h
+INCDMN	:= inc/nsniffd.h
 ################################## rules #######################################
 
 all: $(DIROBJ) $(DIRBIN)$(BINCLI) $(DIRBIN)$(BINDMN)
