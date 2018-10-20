@@ -127,8 +127,8 @@ static void launch_sniffer(void)
 				(socklen_t*)&saddr_size);
 			if (data_size < 0)
 				err_msg("Failed to count packets");
-			write(logfd, buffer, data_size);
-			// ProcessPacket(buffer , data_size);
+			struct ip *iph = (struct ip*)(buffer + sizeof(struct ip));
+			dprintf(logfd, "%s\n", inet_ntoa(iph->ip_src));
 		}
 		exit (0);
 	}

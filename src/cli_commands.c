@@ -109,7 +109,7 @@ void	start_sniff(char *argv[])
 				exit(1);
 				break ;
 			case 0:
-				execlp("./netsnifferd", NULL);
+				execlp("./netsnifferd", "./netsnifferd", NULL);
 				perror("netsniffercli: Failed to launch daemon: ");
 				exit(1);
 				break ;
@@ -142,21 +142,9 @@ void	stop_sniff(char *argv[])
 
 void	show_ip(char *argv[])
 {
-	int running;
-
 	argv++;
-	if ((running = daemon_is_running()))
-	{
-		printf("%s", "netsniffercli: Stoping sniffer... ");
-		transmit_data("\02");
-	}
 	/* do sum work */
 	write(1, "!\n", 2);
-	if (running)
-	{
-		printf("%s", "netsniffercli: Starting sniffer... ");
-		transmit_data("\01");
-	}
 }
 
 void	select_iface(char *argv[])
@@ -180,21 +168,9 @@ void	select_iface(char *argv[])
 
 void	stat_iface(char *argv[])
 {
-	int running;
-
 	argv++;
-	if ((running = daemon_is_running()))
-	{
-		printf("%s", "netsniffercli: Stoping sniffer... ");
-		transmit_data("\02");
-	}
 	/* do sum work */
 	write(1, "!\n", 2);
-	if (running)
-	{
-		printf("%s", "netsniffercli: Starting sniffer... ");
-		transmit_data("\01");
-	}
 }
 
 void	shuttdown_daemon(char *argv[])

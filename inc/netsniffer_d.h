@@ -1,6 +1,7 @@
 #ifndef NETSNIFFER_D_H
 # define NETSNIFFER_D_H
 
+# include <arpa/inet.h>
 # include <net/if.h>
 # include <netinet/ip.h>
 # include <netinet/in.h>
@@ -20,6 +21,7 @@
 
 # if defined __APPLE__ || defined __MACH__
 #  define DEFAULT_IFACE "en0"
+#  define iphdr ip
 # elif defined __linux__
 #  define DEFAULT_IFACE "eth0"
 # endif
