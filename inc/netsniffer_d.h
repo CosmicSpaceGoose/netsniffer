@@ -1,7 +1,10 @@
 #ifndef NETSNIFFER_D_H
 # define NETSNIFFER_D_H
 
+# include <net/if.h>
 # include <netinet/ip.h>
+# include <netinet/in.h>
+# include <sys/ioctl.h>
 # include <sys/socket.h>
 # include <sys/stat.h>
 # include <sys/wait.h>
@@ -15,6 +18,14 @@
 # include <time.h>
 # include <unistd.h>
 
-int		logfd, confd;
+# if defined __APPLE__ || defined __MACH__
+#  define DEFAULT_IFACE "en0"
+# elif defined __linux__
+#  define DEFAULT_IFACE "eth0"
+# endif
+
+int		logfd, confd, child_run;
+
+int		iface_connection(const char *iface, int mod);
 
 #endif

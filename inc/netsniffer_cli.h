@@ -26,6 +26,6 @@ void	show_ip(char *argv[]);
 void	select_iface(char *argv[]);
 void	stat_iface(char *argv[]);
 void	restart_sniffer(char *argv[]);
-void	shutdown_daemon(char *argv[]);
+void	shuttdown_daemon(char *argv[]);
 
 #endif

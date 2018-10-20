@@ -19,7 +19,7 @@ static void	usage(char *argv[])
 	if (!argv || !*argv)
 	{
 		dprintf(2, "%s", "usage: netstat_cli [command_name [argument1 ...]]\n\
-available commands: start stop show select stat shutdown restart --help\ntype:\
+available commands: start stop show select stat shuttdown --help\ntype:\
  \"netstat_cli --help [command_name]\" for info about specific command.\n");
 	}
 	else
@@ -43,8 +43,7 @@ const t_funptr g_commands[] = {
 	{"show", show_ip},
 	{"select", select_iface},
 	{"stat", stat_iface},
-	{"restart", restart_sniffer},
-	{"shutdown", shutdown_daemon},
+	{"shuttdown", shuttdown_daemon},
 	{"--help", usage},
 	{NULL, NULL}
 };

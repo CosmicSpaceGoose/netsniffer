@@ -2,7 +2,8 @@
 
 static void	err_msg(const char *msg)
 {
-	dprintf(logfd, "[%lu] %s: %s", time(0), msg, strerror(errno));
+	dprintf(logfd, "[pid:%d:%lu] %s: %s\n",
+		getpid(), time(0), msg, strerror(errno));
 	exit(1);
 }
 
@@ -10,79 +11,136 @@ static void	signal_handler(int signo)
 {
 	int status;
 
-	if (signo == SIGTERM)
+	if (signo == SIGTERM && getppid() == 1)
 	{
-		kill(0, SIGUSR1);
+		kill(0, SIGQUIT);
+		wait(&status);
 		close(confd);
 		unlink("/tmp/netsnifferd.conf");
-		dprintf(logfd, "[%lu] Shutting down\n", time(0));
+		dprintf(logfd, "[pid:%d:%lu] Shutting down\n", getpid(), time(0));
 		exit(0);
 	}
 	else if (signo == SIGCHLD)
 	{
 		wait(&status);
 		if (WIFEXITED(status))
-			dprintf(logfd, "[%lu] Child process exited: %d\n", time(0),
-				WEXITSTATUS(status));
+			dprintf(logfd, "[pid:%d:%lu] Child process exited: %d\n",
+				getpid(), time(0), WEXITSTATUS(status));
 		else if (WIFSIGNALED(status))
 		{
 			if (WTERMSIG(status))
-				dprintf(logfd, "[%lu] Child process terminate with signal: %d\n"
-					, time(0), WTERMSIG(status));
+				dprintf(logfd, "[pid:%d:%lu] Child process terminate with\
+ signal: %d\n", getpid(), time(0), WTERMSIG(status));
 			else if (WCOREDUMP(status))
-				dprintf(logfd, "[%lu] Child process terminate with signal: %d\n"
-					, time(0), WCOREDUMP(status));
+				dprintf(logfd, "[pid:%d:%lu] Child process terminate with\
+ signal: %d\n", getpid(), time(0), WCOREDUMP(status));
 		}
 		else if (WIFSTOPPED(status))
-			dprintf(logfd, "[%lu] Child process stopped: %d\n", time(0),
-				WSTOPSIG(status));
+			dprintf(logfd, "[pid:%d:%lu] Child process stopped: %d\n",
+				getpid(), time(0), WSTOPSIG(status));
+		child_run = 0;
+	}
+	else if (signo == SIGQUIT && getppid() > 1)
+	{
+		iface_connection(NULL, 1);
+		exit(0);
 	}
 }
 
+/* get port & pid values and write them into .conf file */
 static void	detect_port(int sockfd)
 {
 	struct sockaddr_in sin;
 	socklen_t len = sizeof(sin);
-	int		port, pid;
+	int		port;
 
 	if (getsockname(sockfd, (struct sockaddr *)&sin, &len) == -1)
 		err_msg("Unable to get socket name");
 	port = ntohs(sin.sin_port);
-	pid = getpid();
-	dprintf(logfd, "[%lu] Started and connected to port %d pid %u\n", time(0),
-		port, pid);
-	dprintf(confd, "%d\n%u", port, pid);
-	if (lockf(confd, F_LOCK, 0) == -1)
+	dprintf(logfd, "[pid:%d:%lu] Started and connected to port %d\n",
+		getpid(), time(0), port);
+	dprintf(confd, "%d\n", port);
+	if (lockf(confd, F_LOCK, 0) == -1) /* */
 		err_msg("Locking .conf file error");
 }
 
 static void	answer(int fd, const char *msg)
 {
 	if (write(fd, msg, strlen(msg)) < 0)
-		dprintf(logfd, "[%lu] Socket writing error: %s", time(0),
-			strerror(errno));
+		dprintf(logfd, "[pid:%d:%lu] Socket writing error: %s",
+			getpid(), time(0), strerror(errno));
+}
+
+static char *switch_iface(char *iface_name)
+{
+	static char iface[16];
+
+	if (iface[0] == 0)
+		strcpy(iface, DEFAULT_IFACE);
+	else if (iface_name)
+		strcpy(iface, iface_name);
+	return (iface);
+}
+
+int		iface_connection(const char *iface, int mod)
+{
+	static int		sock_raw;
+	struct ifreq	ifr;
+
+	if (mod == 0)
+	{
+		if ((sock_raw = socket(AF_INET, SOCK_RAW, IPPROTO_TCP)) == -1)
+			err_msg("Socket error");
+		ifr.ifr_addr.sa_family = AF_INET;
+		strncpy(ifr.ifr_name, iface, IFNAMSIZ - 1);
+		ioctl(sock_raw, SIOCGIFADDR, &ifr);
+		bind(sock_raw, &ifr.ifr_addr, sizeof(ifr.ifr_addr));
+		return (sock_raw);
+	}
+	else
+		close(sock_raw);
+	return (0);
 }
 
 static void launch_sniffer(void)
 {
-	/* code */
-}
+	pid_t			pid;
+	char			*iface;
+	int				saddr_size, data_size, sock_raw;
+	struct sockaddr	saddr;
+	char			buffer[65536];
 
-static void stop_sniffer(void)
-{
-	/* code */
-}
-
-static void switch_iface(int iface_no)
-{
-	iface_no++;
+	if (child_run)
+		return ;
+	pid = fork();
+	iface = switch_iface(NULL);
+	if (pid == -1)
+		dprintf(logfd, "[pid:%d:%lu] Can't start sniffer\n", getpid(), time(0));
+	else if (pid == 0)
+	{
+		dprintf(logfd, "[pid:%d:%lu] Sniffer startfed\n", getpid(), time(0));
+		sock_raw = iface_connection(iface, 0);
+		while (1)
+		{
+			saddr_size = sizeof(saddr);
+			data_size = recvfrom(sock_raw, buffer, 65536, 0, &saddr,
+				(socklen_t*)&saddr_size);
+			if (data_size < 0)
+				err_msg("Failed to count packets");
+			write(logfd, buffer, data_size);
+			// ProcessPacket(buffer , data_size);
+		}
+		exit (0);
+	}
+	else
+		child_run = 1;
 }
 
 static void	connector(void)
 {
 	int					sockfd, newsockfd;
 	socklen_t			clilen;
-	char				buffer[2];
+	char				buffer[17];
 	struct sockaddr_in	serv_addr, cli_addr;
 	int					n;
 
@@ -102,41 +160,53 @@ static void	connector(void)
 	while (1) {
 		newsockfd = accept(sockfd, (struct sockaddr *) &cli_addr, &clilen);
 		if (newsockfd < 0)
-			dprintf(logfd, "[%lu] Accepting connection error: %s", time(0),
-				strerror(errno));
-		buffer[0] = 0;
-		buffer[1] = 0;
-		n = read(newsockfd, buffer, 2);
+		{
+			dprintf(logfd, "[pid:%d:%lu] Accepting connection error: %s\n",
+				getpid(), time(0), strerror(errno));
+			continue ;
+		}
+		bzero((void *)buffer, 17);
+		n = read(newsockfd, buffer, 16);
 		if (n > 0)
 		{
-			dprintf(logfd, "Recieve %u %u\n", buffer[0], buffer[1]);
 			switch (buffer[0])
 			{
 				case '\01':
 					launch_sniffer();
-					answer(newsockfd, "Launch sniffer");
+					answer(newsockfd, "\01");
+					dprintf(logfd, "[pid:%d:%lu] Start sniffer\n",
+						getpid(), time(0));
 					break ;
 				case '\02':
-					stop_sniffer();
-					answer(newsockfd, "Stop sniffer");
+					kill(0, SIGQUIT);
+					sleep(1);
+					answer(newsockfd, "\01");
+					dprintf(logfd, "[pid:%d:%lu] Stop sniffer\n",
+						getpid(), time(0));
 					break ;
 				case '\03':
-					switch_iface((int)buffer[1]);
-					answer(newsockfd, "Switch iface");
+					switch_iface(buffer + 1);
+					answer(newsockfd, "\01");
+					dprintf(logfd, "[pid:%d:%lu] Switch iface\n",
+						getpid(), time(0));
 					break ;
 				case '\04':
-					answer(newsockfd, "Daemon shutting down");
+					answer(newsockfd, "\01");
+					dprintf(logfd, "[pid:%d:%lu] Daemon shutting down\n",
+						getpid(), time(0));
 					kill(getpid(), SIGTERM);
 					break ;
 				default:
-					answer(newsockfd, "Unknown data code received");
+					answer(newsockfd, "\02");
+					dprintf(logfd, "[pid:%d:%lu] Unknown data code received\n",
+						getpid(), time(0));
 			}
 		}
 		else if (n < 0)
-			dprintf(logfd, "[%lu] Socket reading error: %s", time(0),
-				strerror(errno));
+			dprintf(logfd, "[pid:%d:%lu] Socket reading error: %s\n",
+				getpid(), time(0), strerror(errno));
+		close(newsockfd);
 	}
-	close(newsockfd);
 	close(sockfd);
 }
 
@@ -152,7 +222,8 @@ int			main(void)
 		S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP)) > -1
 		&& lockf(confd, F_TEST, 0) == -1)
 	{
-		dprintf(logfd, "[%lu] Daemon already started\n", time(0));
+		dprintf(logfd, "[pid:%d:%lu] Daemon already started\n",
+			getpid(), time(0));
 		exit(1);
 	}
 	else if (confd == -1)
@@ -179,7 +250,7 @@ int			main(void)
 	dup(0);
 	dup(0);
 	sigemptyset(&set);
-	sigaddset(&set, SIGQUIT);
+	// sigaddset(&set, SIGQUIT);
 	sigaddset(&set, SIGINT);
 	sigaddset(&set, SIGUSR1);
 	sigprocmask(SIG_BLOCK, &set, NULL);
@@ -189,6 +260,8 @@ int			main(void)
 	if (sigaction(SIGTERM, &act, NULL) == -1)
 		err_msg("Can't set SIGTERM signal");
 	if (sigaction(SIGCHLD, &act, NULL) == -1)
+		err_msg("Can't set SIGCHLD signal");
+	if (sigaction(SIGQUIT, &act, NULL) == -1)
 		err_msg("Can't set SIGCHLD signal");
 	connector();
 	return (0);

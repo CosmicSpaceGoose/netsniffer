@@ -28,12 +28,12 @@ static int	iface_checker(char *name, int mod)
 	copy = list;
 	while (list)
 	{
-		if (!mod)// && list->ifa_addr->sa_data[0])
+		if (!mod && list->ifa_addr->sa_data[0])
 			printf("%d %s\n", list->ifa_addr->sa_data[0], list->ifa_name);
 		if (mod && list->ifa_addr->sa_data[0] && !strcmp(name, list->ifa_name))
 		{
 			freeifaddrs(copy);
-			return ((int)list->ifa_addr->sa_data[0]);
+			return (1);
 		}
 		list = list->ifa_next;
 	}
@@ -83,12 +83,14 @@ static void	transmit_data(char data[])
 		perror("netsniffercli: Connetction error");
 		exit(1);
 	}
-	if (write(sockfd, data, data[1] ? 2 : 1) < 0)
+	if (write(sockfd, data, strlen(data)) < 0)
 		perror("netsniffercli: Socket reading error: ");
-	if ((i = read(sockfd, buffer, 255)) < 0)
+	if ((i = read(sockfd, buffer, 1)) < 0)
 		perror("netsniffercli: Socket reading error: ");
-	buffer[i] = 0;
-	printf("netsniffercli: %s\n", buffer);
+	if (*buffer == 1)
+		printf("Success\n");
+	else
+		printf("Fail\n");
 	close(sockfd);
 }
 
@@ -119,7 +121,10 @@ void	start_sniff(char *argv[])
 		}
 	}
 	else
+	{
+		printf("%s", "netsniffercli: Starting sniffer... ");
 		transmit_data("\01");
+	}
 }
 
 void	stop_sniff(char *argv[])
@@ -127,7 +132,10 @@ void	stop_sniff(char *argv[])
 	if (*argv)
 		argv++;
 	if (daemon_is_running())
+	{
+		printf("%s", "netsniffercli: Stoping sniffer... ");
 		transmit_data("\02");
+	}
 	else
 		dprintf(2, "%s", "netsniffercli: Daemon isn't launched\n");
 }
@@ -138,26 +146,32 @@ void	show_ip(char *argv[])
 
 	argv++;
 	if ((running = daemon_is_running()))
+	{
+		printf("%s", "netsniffercli: Stoping sniffer... ");
 		transmit_data("\02");
+	}
 	/* do sum work */
 	write(1, "!\n", 2);
 	if (running)
+	{
+		printf("%s", "netsniffercli: Starting sniffer... ");
 		transmit_data("\01");
+	}
 }
 
 void	select_iface(char *argv[])
 {
-	int		iface_no;
-	char	data[2];
+	char	data[17];
 
 	if (!*argv)
 		iface_checker(NULL, 0);
-	else if ((iface_no = iface_checker(*argv, 1)) == 0)
+	else if (!iface_checker(*argv, 1))
 		exit(1);
 	else if (daemon_is_running())
 	{
 		data[0] = '\03';
-		data[1] = (char)iface_no;
+		strcpy(data + 1, *argv);
+		printf("%s", "netsniffercli: Selecting interface... ");
 		transmit_data(data);
 	}
 	else
@@ -170,30 +184,27 @@ void	stat_iface(char *argv[])
 
 	argv++;
 	if ((running = daemon_is_running()))
+	{
+		printf("%s", "netsniffercli: Stoping sniffer... ");
 		transmit_data("\02");
+	}
 	/* do sum work */
 	write(1, "!\n", 2);
 	if (running)
+	{
+		printf("%s", "netsniffercli: Starting sniffer... ");
 		transmit_data("\01");
+	}
 }
 
-void	restart_sniffer(char *argv[])
+void	shuttdown_daemon(char *argv[])
 {
 	argv++;
 	if (daemon_is_running())
 	{
-		transmit_data("\02");
-		transmit_data("\01");
-	}
-	else
-		start_sniff(NULL);
-}
-
-void	shutdown_daemon(char *argv[])
-{
-	argv++;
-	if (daemon_is_running())
+		printf("%s", "netsniffercli: Shutting down... ");
 		transmit_data("\04");
+	}
 	else
 		dprintf(2, "%s", "netsniffercli: Daemon isn't launched\n");
 }
