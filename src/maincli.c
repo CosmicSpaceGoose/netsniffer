@@ -28,7 +28,7 @@ static int	iface_checker(char *name, int mod)
 	copy = list;
 	while (list)
 	{
-		if (!mod)// && list->ifa_addr->sa_data[0])
+		if (!mod && list->ifa_addr->sa_data[0])
 			printf("%d %s\n", list->ifa_addr->sa_data[0], list->ifa_name);
 		if (mod && list->ifa_addr->sa_data[0] && !strcmp(name, list->ifa_name))
 		{
@@ -52,11 +52,11 @@ static void	transmit_data(char data[])
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0)
-		perror("netsniffercli: Socket error");
+		perror("nsniffcli: Socket error");
 	gethostname(buffer, 1023);
 	if ((server = gethostbyname(buffer)) == NULL)
 	{
-		herror("netsniffercli: Host error");
+		herror("nsniffcli: Host error");
 		exit(0);
 	}
 	bzero((char *) &serv_addr, sizeof(serv_addr));
@@ -66,12 +66,12 @@ static void	transmit_data(char data[])
 		server->h_length);
 	if ((confd = open(CONF_FILE, O_RDONLY)) < 0)
 	{
-		perror("netsniffercli: Opening .conf file error");
+		perror("nsniffcli: Opening .conf file error");
 		exit(1);
 	}
 	if ((i = read(confd, buffer, 1023)) < 0)
 	{
-		perror("netsniffercli: Reading .conf file error");
+		perror("nsniffcli: Reading .conf file error");
 		exit(1);
 	}
 	close(confd);
@@ -80,13 +80,13 @@ static void	transmit_data(char data[])
 	serv_addr.sin_port = htons(portno);
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0)
 	{
-		perror("netsniffercli: Connetction error");
+		perror("nsniffcli: Connetction error");
 		exit(1);
 	}
 	if (write(sockfd, data, strlen(data)) < 0)
-		perror("netsniffercli: Socket reading error: ");
+		perror("nsniffcli: Socket reading error: ");
 	if ((i = read(sockfd, buffer, 1)) < 0)
-		perror("netsniffercli: Socket reading error: ");
+		perror("nsniffcli: Socket reading error: ");
 	if (*buffer == 1)
 		printf("Success\n");
 	else
@@ -105,24 +105,24 @@ static void	start_sniff(char *argv[])
 		switch (fork())
 		{
 			case -1:
-				perror("netsniffercli: Failed to run daemon: ");
+				perror("nsniffcli: Failed to run daemon: ");
 				exit(1);
 				break ;
 			case 0:
 				execlp("./nsniffd", "./nsniffd", NULL);
-				perror("netsniffercli: Failed to launch daemon: ");
+				perror("nsniffcli: Failed to launch daemon: ");
 				exit(1);
 				break ;
 			default:
 				wait(&status);
 				if (status == 0)
-					printf("%s", "netsniffercli: Daemon launched succesfully\n");
+					printf("%s", "nsniffcli: Daemon launched succesfully\n");
 				exit(status);
 		}
 	}
 	else
 	{
-		printf("%s", "netsniffercli: Starting sniffer... ");
+		printf("%s", "nsniffcli: Starting sniffer... ");
 		transmit_data("\01");
 	}
 }
@@ -133,18 +133,39 @@ static void	stop_sniff(char *argv[])
 		argv++;
 	if (daemon_is_running())
 	{
-		printf("%s", "netsniffercli: Stoping sniffer... ");
+		printf("%s", "nsniffcli: Stoping sniffer... ");
 		transmit_data("\02");
 	}
 	else
-		dprintf(2, "%s", "netsniffercli: Daemon isn't launched\n");
+		dprintf(2, "%s", "nsniffcli: Daemon isn't launched\n");
 }
 
 static void	show_ip(char *argv[])
 {
-	argv++;
-	/* do sum work */
-	//write(1, "sum text\n", 9);
+	in_addr_t		addr;
+	struct in_addr	inp;
+	int				fd;
+	char			buffer[sizeof(t_data)];
+	t_data			*entry;
+
+	if (inet_aton(*argv, &inp) == 0)
+	{
+		dprintf(2, "%s", "nsniffcli: Non-valid address\n");
+		exit(0);
+	}
+	addr = inet_addr(*argv);
+	if ((fd = open(DATA_FILE, O_RDONLY)) == -1)
+	{
+		perror("nsniffcli: Can't read data file");
+		exit (1);
+	}
+	while (read(fd, buffer, sizeof(t_data)))
+	{
+		entry = (t_data *)buffer;
+		if (addr == entry->addr)
+			printf("%s %llu", entry->iface, entry->count);
+	}
+	close(fd);
 }
 
 static void	select_iface(char *argv[])
@@ -159,30 +180,33 @@ static void	select_iface(char *argv[])
 	{
 		data[0] = '\03';
 		strcpy(data + 1, *argv);
-		printf("%s", "netsniffercli: Selecting interface... ");
+		printf("%s", "nsniffcli: Selecting interface... ");
 		transmit_data(data);
 	}
 	else
-		dprintf(2, "%s", "netsniffercli: Daemon isn't launched\n");
+		dprintf(2, "%s", "nsniffcli: Daemon isn't launched\n");
 }
 
 static void	stat_iface(char *argv[])
 {
-	int fd;
-	char buffer[sizeof(t_data)];
-	t_data	*entry;
+	int				fd;
+	char			buffer[sizeof(t_data)];
+	t_data			*entry;
+	struct in_addr	addr;
 
-	argv++;
 	if ((fd = open(DATA_FILE, O_RDONLY)) == -1)
 	{
-		perror("Can't read data file");
+		perror("nsniffcli: Can't read data file");
 		exit (1);
 	}
 	while (read(fd, buffer, sizeof(t_data)))
 	{
 		entry = (t_data *)buffer;
-		printf("%u.%u.%u.%u %s %llu\n", buffer[0], buffer[1], buffer[2],
-			buffer[3], entry->iface, entry->count);
+		if (!strcmp(entry->iface, *argv))
+		{
+			addr.s_addr = (uint32_t)buffer;
+			printf("%s %llu\n", inet_ntoa(addr), entry->count);
+		}
 	}
 	close(fd);
 }
@@ -192,11 +216,11 @@ static void	shuttdown_daemon(char *argv[])
 	argv++;
 	if (daemon_is_running())
 	{
-		printf("%s", "netsniffercli: Shutting down... ");
+		printf("%s", "nsniffcli: Shutting down... ");
 		transmit_data("\04");
 	}
 	else
-		dprintf(2, "%s", "netsniffercli: Daemon isn't launched\n");
+		dprintf(2, "%s", "nsniffcli: Daemon isn't launched\n");
 }
 
 const char *help_command[] = {
@@ -217,9 +241,9 @@ static void	usage(char *argv[])
 
 	if (!argv || !*argv)
 	{
-		dprintf(2, "%s", "usage: netstat_cli [command_name [argument1 ...]]\n\
+		dprintf(2, "%s", "usage: nsniffcli [command_name [argument1 ...]]\n\
 available commands: start stop show select stat shuttdown --help\ntype:\
- \"netstat_cli --help [command_name]\" for info about specific command.\n");
+ \"nsniffcli --help [command_name]\" for info about specific command.\n");
 	}
 	else
 	{
@@ -232,7 +256,7 @@ available commands: start stop show select stat shuttdown --help\ntype:\
 			}
 			i++;
 		}
-		dprintf(2, "%s: %s\n", "netsniffer_cli: Unknown command name", *argv);
+		dprintf(2, "%s: %s\n", "nsniffcli: Unknown command name", *argv);
 	}
 }
 
@@ -265,7 +289,7 @@ int			main(int argc, char *argv[])
 			}
 			i++;
 		}
-		dprintf(2, "%s: %s\n", "netsniffer_cli: Unknown command name", *argv);
+		dprintf(2, "%s: %s\n", "nsniffcli: Unknown command name", *argv);
 	}
 	return (0);
 }

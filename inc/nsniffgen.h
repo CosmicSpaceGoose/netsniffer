@@ -2,6 +2,7 @@
 # define NSNIFFGEN_H
 
 /* general header */
+# include <arpa/inet.h>
 # include <netinet/in.h>
 # include <sys/socket.h>
 # include <sys/wait.h>

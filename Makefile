@@ -1,7 +1,7 @@
 ################################ compiler variables ############################
 # General
 CC		:= gcc
-CFLAGS	:= -Wall -Wextra -Werror -O2
+CFLAGS	:= -Wall -Wextra -O2
 DIROBJ	:= obj/
 DIRBIN	:= obj/bin/
 DIRSRC	:= src/

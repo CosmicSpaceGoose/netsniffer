@@ -129,11 +129,23 @@ void	bucket(char *data, int mod)
 		while (min <= max)
 		{
 			i = (min + max) / 2;
-			if (entry.addr < dptr[i].addr)
+			if (entry.addr > dptr[i].addr)
 				min = i + 1;
 			else if (entry.addr == dptr[i].addr)
 			{
-				dptr[i].count++;
+				while (i != 0 && dptr[i - 1].addr == entry.addr)
+					i--;
+				while (i < last && dptr[i].addr == entry.addr)
+				{
+					if (!strcmp(dptr[i].iface, entry.iface))
+					{
+						dptr[i].count++;
+						return ;
+					}
+					i++;
+				}
+				max = i - 1;
+				min = i;
 				break ;
 			}
 			else
@@ -153,7 +165,13 @@ void	bucket(char *data, int mod)
 				memcpy((void *)dptr, (void *)data, sizeof(t_data));
 			}
 			else if (entry.addr > dptr[last - 1].addr)
-				memcpy((void *)dptr + last, (void *)data, sizeof(t_data));
+				memcpy((void *)(dptr + last), (void *)data, sizeof(t_data));
+			else
+			{
+				memmove((void *)(dptr + max + 2), (void *)(dptr + max + 1),
+					last - 1 - max);
+				memcpy((void *)(dptr + max + 1), (void *)data, sizeof(t_data));
+			}
 			last++;
 		}
 	}
@@ -164,7 +182,7 @@ void	bucket(char *data, int mod)
 			err_msg("Can't open data file for writing");
 		while (i < last)
 		{
-			write(fd, (char *)(dptr + i), sizeof(t_data));
+			write(fd, (void *)(dptr + i), sizeof(t_data));
 			i++;
 		}
 		close(fd);
@@ -219,7 +237,6 @@ static void launch_sniffer(void)
 			entry.addr = (uint32_t)iph->ip_src.s_addr;
 			strcpy(entry.iface, iface);
 			bucket((char *)&entry, INC);
-			// dprintf(logfd, "%s\n", inet_ntoa(iph->ip_src));
 		}
 		exit (0);
 	}
@@ -260,37 +277,37 @@ static void	connector(void)
 		n = read(newsockfd, buffer, 16);
 		if (n > 0)
 		{
-			switch (buffer[0])
+			if (buffer[0] == '\01')
 			{
-				case '\01':
-					launch_sniffer();
-					answer(newsockfd, "\01");
-					dprintf(logfd, "[pid:%d:%lu] Start sniffer\n",
-						getpid(), time(0));
-					break ;
-				case '\02':
-					kill(0, SIGQUIT);
-					sleep(1);
-					answer(newsockfd, "\01");
-					dprintf(logfd, "[pid:%d:%lu] Stop sniffer\n",
-						getpid(), time(0));
-					break ;
-				case '\03':
-					switch_iface(buffer + 1);
-					answer(newsockfd, "\01");
-					dprintf(logfd, "[pid:%d:%lu] Switch iface\n",
-						getpid(), time(0));
-					break ;
-				case '\04':
-					answer(newsockfd, "\01");
-					dprintf(logfd, "[pid:%d:%lu] Daemon shutting down\n",
-						getpid(), time(0));
-					kill(getpid(), SIGTERM);
-					break ;
-				default:
-					answer(newsockfd, "\02");
-					dprintf(logfd, "[pid:%d:%lu] Unknown data code received\n",
-						getpid(), time(0));
+				launch_sniffer();
+				answer(newsockfd, "\01");
+				dprintf(logfd, "[pid:%d:%lu] Start sniffer\n", getpid(), time(0));
+			}
+			else if (buffer[0] == '\02')
+			{
+				kill(0, SIGQUIT);
+				sleep(1);
+				answer(newsockfd, "\01");
+				dprintf(logfd, "[pid:%d:%lu] Stop sniffer\n", getpid(), time(0));
+			}
+			else if (buffer[0] == '\03')
+			{
+				switch_iface(buffer + 1);
+				answer(newsockfd, "\01");
+				dprintf(logfd, "[pid:%d:%lu] Switch iface\n", getpid(), time(0));
+			}
+			else if (buffer[0] == '\04')
+			{
+				answer(newsockfd, "\01");
+				dprintf(logfd, "[pid:%d:%lu] Daemon shutting down\n",
+					getpid(), time(0));
+				kill(getpid(), SIGTERM);
+			}
+			else
+			{
+				answer(newsockfd, "\02");
+				dprintf(logfd, "[pid:%d:%lu] Unknown data code received\n",
+					getpid(), time(0));
 			}
 		}
 		else if (n < 0)

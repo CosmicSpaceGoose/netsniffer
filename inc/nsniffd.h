@@ -2,7 +2,6 @@
 # define NSNIFFD_H
 
 /* daemon header */
-# include <arpa/inet.h>
 # include <net/if.h>
 # include <netinet/ip.h>
 # include <sys/ioctl.h>
