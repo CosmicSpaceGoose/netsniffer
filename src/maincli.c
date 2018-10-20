@@ -28,7 +28,7 @@ static int	iface_checker(char *name, int mod)
 	copy = list;
 	while (list)
 	{
-		if (!mod && list->ifa_addr->sa_data[0])
+		if (!mod)// && list->ifa_addr->sa_data[0])
 			printf("%d %s\n", list->ifa_addr->sa_data[0], list->ifa_name);
 		if (mod && list->ifa_addr->sa_data[0] && !strcmp(name, list->ifa_name))
 		{
@@ -144,7 +144,7 @@ static void	show_ip(char *argv[])
 {
 	argv++;
 	/* do sum work */
-	write(1, "!\n", 2);
+	//write(1, "sum text\n", 9);
 }
 
 static void	select_iface(char *argv[])
@@ -170,7 +170,7 @@ static void	stat_iface(char *argv[])
 {
 	int fd;
 	char buffer[sizeof(t_data)];
-	t_data	entry;
+	t_data	*entry;
 
 	argv++;
 	if ((fd = open(DATA_FILE, O_RDONLY)) == -1)
@@ -180,9 +180,9 @@ static void	stat_iface(char *argv[])
 	}
 	while (read(fd, buffer, sizeof(t_data)))
 	{
-		entry = *(t_data *)buffer;
+		entry = (t_data *)buffer;
 		printf("%u.%u.%u.%u %s %llu\n", buffer[0], buffer[1], buffer[2],
-			buffer[3], entry.iface, entry.count);
+			buffer[3], entry->iface, entry->count);
 	}
 	close(fd);
 }
@@ -267,4 +267,5 @@ int			main(int argc, char *argv[])
 		}
 		dprintf(2, "%s: %s\n", "netsniffer_cli: Unknown command name", *argv);
 	}
+	return (0);
 }

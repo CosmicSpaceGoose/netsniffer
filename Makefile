@@ -7,6 +7,7 @@ DIRBIN	:= obj/bin/
 DIRSRC	:= src/
 DIRINC	:= inc/
 INC		:= -I$(DIRINC)
+INCGEN	:= inc/nsniffgen.h
 # Command Line Interface
 BINCLI	:= nsniffcli
 DIRCLI	:= obj/cli/
@@ -28,14 +29,14 @@ all: $(DIROBJ) $(DIRBIN)$(BINCLI) $(DIRBIN)$(BINDMN)
 $(DIRBIN)$(BINCLI): $(DIROBJ) $(OBJCLI)
 	$(CC) $(CFLAGS) $(OBJCLI) -o $(DIRBIN)$(BINCLI)
 
-$(DIRCLI)%.o: $(DIRSRC)%.c $(INCCLI)
+$(DIRCLI)%.o: $(DIRSRC)%.c $(INCCLI) $(INCGEN)
 	$(CC) $(INC) $(CFLAGS) -o $@ -c $<
 
 # Daemon
 $(DIRBIN)$(BINDMN): $(DIROBJ) $(OBJDMN)
 	$(CC) $(CFLAGS) $(OBJDMN) -o $(DIRBIN)$(BINDMN)
 
-$(OBJDMN): $(DIRDMN)%.o: $(DIRSRC)%.c $(INCDMN)
+$(DIRDMN)%.o: $(DIRSRC)%.c $(INCDMN) $(INCGEN)
 	$(CC) $(INC) $(CFLAGS) -o $@ -c $<
 
 # General
