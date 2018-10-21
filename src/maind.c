@@ -48,7 +48,9 @@ static void	signal_handler(int signo)
 	}
 }
 
-/* get port & pid values and write them into .conf file */
+/*
+**	get port value and write it into .conf file, then lock file
+*/
 static void	detect_port(int sockfd)
 {
 	struct sockaddr_in sin;
@@ -83,6 +85,9 @@ static char *switch_iface(char *iface_name)
 	return (iface);
 }
 
+/*
+**		open or close ip connection
+*/
 int		iface_connection(const char *iface, int mod)
 {
 	static int		sock_raw;
@@ -103,6 +108,9 @@ int		iface_connection(const char *iface, int mod)
 	return (0);
 }
 
+/*
+**	function wrapper for data
+*/
 void	bucket(char *data, int mod)
 {
 	static t_data	*dptr;
@@ -111,7 +119,10 @@ void	bucket(char *data, int mod)
 	int				fd;
 	t_data			entry;
 
-	if (mod == ADD)	/*	add entry at the end of array	*/
+	/*
+	**	add entry at the end of array or add 1st entry
+	*/
+	if (mod == ADD || (mod == INC && dptr == NULL))
 	{
 		if (last == total)
 		{
@@ -121,15 +132,18 @@ void	bucket(char *data, int mod)
 		memcpy((void *)dptr + last, (void *)data, sizeof(t_data));
 		last++;
 	}
-	else if (mod == INC)	/* increas number of packets received from ip */
-	{						/* or add new entry */
+	/*
+	**	increas number of packets received from ip or add new entry
+	*/
+	else if (mod == INC)
+	{
 		entry = *(t_data *)data;
 		min = 0;
 		max = last - 1;
 		while (min <= max)
 		{
 			i = (min + max) / 2;
-			if (entry.addr > dptr[i].addr)
+			if (entry.addr > dptr[i].addr || max == 0)
 				min = i + 1;
 			else if (entry.addr == dptr[i].addr)
 			{
@@ -151,7 +165,10 @@ void	bucket(char *data, int mod)
 			else
 				max = i - 1;
 		}
-		if (min > max)	/* if entry not present - insert new entry */
+		/*
+		**	insert new entry if it not present
+		*/
+		if (min > max)
 		{
 			if (last == total)
 			{
@@ -175,7 +192,10 @@ void	bucket(char *data, int mod)
 			last++;
 		}
 	}
-	else if (mod == SAVE)	/* save all data in file */
+	/*
+	**	save all data in file
+	*/
+	else if (mod == SAVE)
 	{
 		i = 0;
 		if ((fd = open(DATA_FILE, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU)) == -1)

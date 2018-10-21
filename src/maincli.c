@@ -22,7 +22,7 @@ static int	iface_checker(char *name, int mod)
 
 	if (getifaddrs(&list))
 	{
-		perror("netsniffer: ");
+		perror("netsniffer: Can't retriece interfaces");
 		return (1);
 	}
 	copy = list;
@@ -231,6 +231,7 @@ const char *help_command[] = {
 \n	if interface omitted - list available interfaces names",
 	"stat [iface] - show all collected statistics for particular interface,\
 \n 	if interface omitted - for all interfaces.\n",
+	"shuttdown - stop daemon work and exit",
 	"--help [command name] - show usage or specific command info.\n",
 	NULL
 };

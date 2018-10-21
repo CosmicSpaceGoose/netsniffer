@@ -24,12 +24,6 @@
 #  define CONF_FILE "/var/nsniffd/nsniffd.conf"
 #  define LOG_FILE "/var/nsniffd/nsniffd.log"
 #  define DATA_FILE "/var/nsniffd/nsniffd.data"
-# elif defined __CYGWIN__
-#  define DEFAULT_IFACE "eth0"
-#  define DATA_DIR "/var/nsniffd"
-#  define CONF_FILE "/var/nsniffd/nsniffd.conf"
-#  define LOG_FILE "/var/nsniffd/nsniffd.log"
-#  define DATA_FILE "/var/nsniffd/nsniffd.data"
 # endif
 
 typedef struct	s_data {
