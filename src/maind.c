@@ -319,7 +319,7 @@ static void	connector(void)
 			else if (buffer[0] == '\04')
 			{
 				answer(newsockfd, "\01");
-				dprintf(logfd, "[pid:%d:%lu] Daemon shutting down\n",
+				dprintf(logfd, "[pid:%d:%lu] Daemon shuting down\n",
 					getpid(), time(0));
 				kill(getpid(), SIGTERM);
 			}
