@@ -199,7 +199,7 @@ static void	stat_iface(char *argv[])
 		perror("nsniffcli: Can't read data file");
 		exit (1);
 	}
-	while (read(fd, buffer, sizeof(t_data)))
+	while (read(fd, buffer, sizeof(t_data)) > 0)
 	{
 		entry = (t_data *)buffer;
 		if (!strcmp(entry->iface, *argv))

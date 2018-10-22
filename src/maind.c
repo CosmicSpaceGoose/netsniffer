@@ -257,6 +257,7 @@ static void launch_sniffer(void)
 			entry.addr = (uint32_t)iph->ip_src.s_addr;
 			strcpy(entry.iface, iface);
 			bucket((char *)&entry, INC);
+			dprintf(logfd, ">%u\n", iph->ip_src.s_addr);
 		}
 		exit (0);
 	}
