@@ -18,17 +18,13 @@
 # include <time.h>
 # if defined __APPLE__ || defined __MACH__
 #  define DEFAULT_IFACE "en0"
-#  define DATA_DIR "/tmp/nsniffd"
-#  define CONF_FILE "/tmp/nsniffd/nsniffd.conf"
-#  define LOG_FILE "/tmp/nsniffd/nsniffd.log"
-#  define DATA_FILE "/tmp/nsniffd/nsniffd.data"
 # elif defined __linux__
 #  define DEFAULT_IFACE "eth0"
-#  define DATA_DIR "/var/nsniffd"
-#  define CONF_FILE "/var/nsniffd/nsniffd.conf"
-#  define LOG_FILE "/var/nsniffd/nsniffd.log"
-#  define DATA_FILE "/var/nsniffd/nsniffd.data"
 # endif
+# define DATA_DIR "./nsniffd"
+# define CONF_FILE "./nsniffd.conf"
+# define LOG_FILE "./nsniffd.log"
+# define DATA_FILE "./nsniffd.data"
 # define ADD 0
 # define INC 1
 # define SAVE 2
@@ -196,7 +192,7 @@ int main()
 	dprintf(logfd, "[pid:%d:%lu] Sniffer startfed\n", getpid(), time(0));
 	sock_raw = iface_connection(iface, 0);
 	load_data();
-	i = 100;
+	i = 10;
 	while (i)
 	{
 		saddr_size = sizeof(saddr);
@@ -213,5 +209,5 @@ int main()
 	}
 	bucket(NULL, SAVE);
 	iface_connection(NULL, 1);
-	exit (0);
+	return (0);
 }
